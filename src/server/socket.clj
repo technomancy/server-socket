@@ -15,18 +15,20 @@
            (java.io InputStreamReader OutputStream
                     OutputStreamWriter PrintWriter)
            (clojure.lang LineNumberingPushbackReader))
-  (:use [clojure.main :only (repl)]))
+  (:use [clojure.main :only (repl)]
+        [clojure.repl])) ;for thread-stopper
 
 (defn- on-thread [f]
   (doto (Thread. ^Runnable f)
     (.start)))
 
-(defn- close-socket [^Socket s]
+(defn close-socket [^Socket s] ;; make public, for explicit closing of a socket and it's thread
   (when-not (.isClosed s)
     (doto s
       (.shutdownInput)
       (.shutdownOutput)
-      (.close))))
+      (.close)
+      (thread-stopper)))) ;;kill off thread if closing socket
 
 (defn- accept-fn [^Socket s connections fun]
   (let [ins (.getInputStream s)
@@ -34,7 +36,7 @@
     (on-thread #(do
                   (dosync (commute connections conj s))
                   (try
-                    (fun ins outs)
+                    (fun ins outs s) ;; send socket reference as well
                     (catch SocketException e))
                   (close-socket s)
                   (dosync (commute connections disj s))))))

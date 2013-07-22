@@ -23,12 +23,13 @@
     (.start)))
 
 (defn close-socket [^Socket s] ;; make public, for explicit closing of a socket and it's thread
+  (if s
   (when-not (.isClosed s)
     (doto s
       (.shutdownInput)
       (.shutdownOutput)
-      (.close)
-      (thread-stopper)))) ;;kill off thread if closing socket
+      (.close))))
+  (thread-stopper)) ;;kill off thread if closing socket
 
 (defn- accept-fn [^Socket s connections fun]
   (let [ins (.getInputStream s)
